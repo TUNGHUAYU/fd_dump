@@ -1,4 +1,5 @@
 # reference https://man7.org/linux/man-pages/man5/proc.5.html
+
 # << define function >>
 
 function USAGE(){
@@ -6,6 +7,39 @@ function USAGE(){
 	echo "All information are extract from /proc/<pid>"
 	echo "reference proc manual: https://man7.org/linux/man-pages/man5/proc.5.html"
 	echo "github repo: https://github.com/TUNGHUAYU/process_info_dump"
+}
+
+function FUNC_parse_argument(){
+	for arg in $@
+	do
+		case "${arg}" in
+			-h | --help)
+				USAGE
+				exit 0
+				;;
+		
+			--show-fd)
+				flag_show_fd=1
+				echo "show fd -- ON"
+				;;
+				
+			--show-maps)
+				flag_show_map=1
+				echo "show map -- ON"
+				;;
+				
+			--show-task)
+				flag_show_task=1
+				echo "show task -- ON"
+				;;
+				
+			*)
+				echo "Syntax Error"
+				USAGE
+				exit 1
+				;;
+		esac
+	done
 }
 
 # << variable setting >>
@@ -16,41 +50,9 @@ flag_show_task=0
 
 # << parse argument >>
 
-if [[ $# -eq 0 ]]; then
-	USAGE
-	exit 0
+if [[ $# -ne 0 ]]; then
+	FUNC_parse_argument $@
 fi
-
-for arg in $@
-do
-	case "${arg}" in
-		-h | --help)
-			USAGE
-			exit 0
-			;;
-	
-		--show-fd)
-			flag_show_fd=1
-			echo "show fd -- ON"
-			;;
-			
-		--show-maps)
-			flag_show_map=1
-			echo "show map -- ON"
-			;;
-			
-		--show-task)
-			flag_show_task=1
-			echo "show task -- ON"
-			;;
-			
-		*)
-			echo "Syntax Error"
-			USAGE
-			exit 1
-			;;
-	esac
-done
 
 # <<< main >>>
 
