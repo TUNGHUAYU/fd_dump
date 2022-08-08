@@ -59,10 +59,12 @@ function FUNC_get_cmdline(){
 	local proc_path=$1
 	local cmdline_path="${proc_path}/cmdline"
 	
-	if [[ -e ${cmdline_path} ]];then
-		echo $(cat ${cmdline_path})
-	else 
+	if [[ ! -e ${cmdline_path} ]];then
 		echo "not found"
+	elif [[ ! -r ${cmdline_path} ]]; then
+		echo "permission denied"
+	else
+		echo $(cat ${cmdline_path})
 	fi
 
 }
@@ -72,11 +74,43 @@ function FUNC_get_exe(){
 	local proc_path=$1
 	local exe_path="${proc_path}/exe"
 	
-	if [[ -e ${exe_path} ]];then
-		echo $(ls -l ${exe_path} | awk 'NF==11{print $(NF-2) $(NF-1) $(NF)} NF==9{print $NF" -> (null)"}')
-	else 
+	if [[ ! -e ${exe_path} ]];then
 		echo "not found"
+	elif [[ ! -r ${exe_path} ]]; then 
+		echo "permission denied"
+	else 
+		echo $(ls -l ${exe_path} | awk 'NF==11{print $(NF-2) $(NF-1) $(NF)} NF==9{print $NF" -> (null)"}')
 	fi
+}
+
+function FUNC_get_nbr_fds(){
+	
+	local proc_path=$1
+	local fd_path="${proc_path}/fd"
+
+	if [[ ! -e ${fd_path} ]];then
+		echo "not found"
+	elif [[ ! -r ${fd_path} ]]; then 
+		echo "permission denied"
+	else 
+		echo $(ls ${fd_path} | wc -w)
+	fi
+
+}
+
+function FUNC_get_nbr_tasks(){
+
+	local proc_path=$1
+	local task_path="${proc_path}/task"
+
+	if [[ ! -e ${task_path} ]];then
+		echo "not found"
+	elif [[ ! -r ${task_path} ]]; then 
+		echo "permission denied"
+	else 
+		echo $(ls ${task_path} | wc -w)
+	fi
+
 }
 
 # << variable setting >>
@@ -99,13 +133,13 @@ if [[ ${flag_verbose} == 1 ]]; then
 	
 else 
 	
-	format="| %-10s | %-50s | %5s | %5s |\n" # pid exe #fd #task
+	format="| %-10s | %-50s | %20s | %20s |\n" # pid exe #fd #task
 	
 	printf "${format//d/s}" "pid" "exe" "#fd" "#task"
 	
 fi
 
-
+# show information
 for proc in $(ls -d /proc/[0-9]*)
 do
 
@@ -118,8 +152,8 @@ do
 	pid=${proc##*/}
 	cmdline=$(FUNC_get_cmdline ${proc})
 	exe=$(FUNC_get_exe ${proc})
-	nbr_fds=$(ls ${proc}/fd | wc -w)
-	nbr_tasks=$(ls ${proc}/task | wc -w)
+	nbr_fds=$(FUNC_get_nbr_fds ${proc})
+	nbr_tasks=$(FUNC_get_nbr_tasks ${proc})
 	
 	
 	# show information ( simple and verbose version )
