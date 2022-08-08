@@ -3,7 +3,7 @@
 # << define function >>
 
 function USAGE(){
-	echo "sh process_dump.sh [-v, --verbose][--show-maps][-h, --help]"
+	echo "sh process_info_dump.sh [-v, --verbose][--show-maps][-h, --help]"
 	echo ""
 	echo "Example 1. display count information of \"fds\" and \"tasks\" in each process"
 	echo "sh proccess_dump.sh"
