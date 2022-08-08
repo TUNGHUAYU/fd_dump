@@ -64,7 +64,7 @@ function FUNC_get_cmdline(){
 	elif [[ ! -r ${cmdline_path} ]]; then
 		echo "permission denied"
 	else
-		echo $(cat ${cmdline_path})
+		echo $(cat ${cmdline_path} | tr -d '\0')
 	fi
 
 }
