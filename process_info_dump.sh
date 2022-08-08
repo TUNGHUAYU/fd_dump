@@ -3,13 +3,23 @@
 # << define function >>
 
 function USAGE(){
-	echo "sh process_dump.sh [--show-fd] [--show-maps] [--show_task] [-h, --help]"
-	echo "All information are extract from /proc/<pid>"
+	echo "sh process_dump.sh [-v, --verbose][--show-maps][-h, --help]"
+	echo ""
+	echo "Example 1. display count information of \"fds\" and \"tasks\" in each process"
+	echo "sh proccess_dump.sh"
+	echo ""
+	echo "Example 2. display detail information of \"fds\" and \"tasks\" in each process"
+	echo "sh proccess_dump.sh --verbose"
+	echo ""
+	echo "Example 3. display detail information of \"fds\", \"tasks\", and additional \"maps\" in each process"
+	echo "sh proccess_dump.sh --verbose --show-maps"
+	echo ""
 	echo "reference proc manual: https://man7.org/linux/man-pages/man5/proc.5.html"
 	echo "github repo: https://github.com/TUNGHUAYU/process_info_dump"
 }
 
 function FUNC_parse_argument(){
+
 	for arg in $@
 	do
 		case "${arg}" in
@@ -17,20 +27,22 @@ function FUNC_parse_argument(){
 				USAGE
 				exit 0
 				;;
-		
-			--show-fd)
-				flag_show_fd=1
-				echo "show fd -- ON"
-				;;
 				
 			--show-maps)
-				flag_show_map=1
-				echo "show map -- ON"
+				if [[ ${flag_verbose} == 1 ]];then
+					flag_show_map=1
+					echo "show map -- ON"
+				else
+					echo "the --show-maps only support on verbose mode."
+					echo "please enter --verbose first"
+					USAGE
+					exit 1
+				fi
 				;;
 				
-			--show-task)
-				flag_show_task=1
-				echo "show task -- ON"
+			-v|--verbose)
+				flag_verbose=1
+				echo "verbose -- ON"
 				;;
 				
 			*)
@@ -42,11 +54,35 @@ function FUNC_parse_argument(){
 	done
 }
 
+function FUNC_get_cmdline(){
+	
+	local proc_path=$1
+	local cmdline_path="${proc_path}/cmdline"
+	
+	if [[ -e ${cmdline_path} ]];then
+		echo $(cat ${cmdline_path})
+	else 
+		echo "not found"
+	fi
+
+}
+
+function FUNC_get_exe(){
+	
+	local proc_path=$1
+	local exe_path="${proc_path}/exe"
+	
+	if [[ -e ${exe_path} ]];then
+		echo $(ls -l ${exe_path} | awk 'NF==11{print $(NF-2) $(NF-1) $(NF)} NF==9{print $NF" -> (null)"}')
+	else 
+		echo "not found"
+	fi
+}
+
 # << variable setting >>
 
-flag_show_fd=0
 flag_show_map=0
-flag_show_task=0
+flag_verbose=0
 
 # << parse argument >>
 
@@ -56,15 +92,54 @@ fi
 
 # <<< main >>>
 
+# define format 
+if [[ ${flag_verbose} == 1 ]]; then
+	
+	format='=======pid %s -> %s========\n'
+	
+else 
+	
+	format="| %-10s | %-50s | %5s | %5s |\n" # pid exe #fd #task
+	
+	printf "${format//d/s}" "pid" "exe" "#fd" "#task"
+	
+fi
+
+
 for proc in $(ls -d /proc/[0-9]*)
 do
-	echo "=============================================================================="
-	printf "%-10s : %s\n" "proc" "${proc}"
-	printf "%-10s : %s\n" "cmdline" "$(cat ${proc}/cmdline)"
-	printf "%-10s : %s\n" "exe" "$(ls -l ${proc}/exe | awk '{print $(NF-2)$(NF-1)$(NF)}')"
+
+	# filter out unavaliable process
+	if [[ ! -e ${proc} ]]; then
+		continue
+	fi
 	
-	if [[ ${flag_show_task} -eq 1 ]];then
+	# get the information
+	pid=${proc##*/}
+	cmdline=$(FUNC_get_cmdline ${proc})
+	exe=$(FUNC_get_exe ${proc})
+	nbr_fds=$(ls ${proc}/fd | wc -w)
+	nbr_tasks=$(ls ${proc}/task | wc -w)
 	
+	
+	# show information ( simple and verbose version )
+	
+	if [[ ${flag_verbose} == 1 ]]; then
+	
+		printf "${format}" "${pid}" "${exe}"
+			
+		# show fds ( file descriptors )
+		echo ""
+		echo "[fd]"
+		ls -l ${proc}/fd | awk \
+		'
+		NR>1{
+			print $(NF-2)$(NF-1)$(NF)
+		}
+		'
+		echo ""
+		
+		# show tasks
 		echo ""
 		echo "[task]"
 		ls -l ${proc}/task  | awk \
@@ -73,29 +148,20 @@ do
 			print $NF
 		}
 		'
+	
+		# show memory mapping information when flag turn on.
+		if [[ ${flag_show_map} == 1 ]];then
 		
-	fi
-
-	if [[ ${flag_show_fd} -eq 1 ]];then
+			echo ""
+			echo "[map]"
+			cat ${proc}/maps
+			
+			echo ""
+		fi
 	
-		echo ""
-		echo "[fd]"
-		ls -l ${proc}/fd/[0-9]* | awk \
-		'
-		{
-			print $(NF-2)$(NF-1)$(NF)
-		}
-		'
-	
-	fi
-	
-	if [[ ${flag_show_map} -eq 1 ]];then
-	
-		echo ""
-		echo "[map]"
-		cat ${proc}/maps
+	else 
 		
-		echo ""
+		printf "${format}" "${pid}" "${exe}" "${nbr_fds}" "${nbr_tasks}"
 	
 	fi
 	
